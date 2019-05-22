@@ -123,7 +123,7 @@ var LocalDirtyFlag = cc.Enum({
 /**
  * !#en The event type supported by Node
  * !#zh Node 支持的事件类型
- * @class Node.EventType
+ * @enum Node.EventType
  * @static
  * @namespace Node
  */
@@ -553,7 +553,7 @@ let NodeDefines = {
         _anchorPoint: cc.v2(0.5, 0.5),
         _position: cc.Vec3,
         _scale: cc.v3(1, 1, 1),
-        _quat: cc.Quat,
+        _eulerAngles: cc.Vec3,
         _skewX: 0.0,
         _skewY: 0.0,
         _zIndex: {
@@ -958,6 +958,7 @@ let NodeDefines = {
                 return this._opacity;
             },
             set (value) {
+                value = cc.misc.clampf(value, 0, 255);
                 if (this._opacity !== value) {
                     this._opacity = value;
                     this._renderFlag |= RenderFlow.FLAG_OPACITY;
@@ -1168,7 +1169,7 @@ let NodeDefines = {
         this._cullingMask = 1;
         this._childArrivalOrder = 1;
 
-        this._eulerAngles = cc.v3();
+        this._quat = cc.quat();
     },
 
     statics: {
@@ -1317,21 +1318,22 @@ let NodeDefines = {
         }
 
         // TODO: remove _rotationX & _rotationY in future version, 3.0 ?
-        // Update quaternion from rotation, when upgrade from 1.x to 2.0
+        // Update eulerAngles from rotation, when upgrade from 1.x to 2.0
         // If rotation x & y is 0 in old version, then update rotation from default quaternion is ok too
-        let quat = this._quat;
+        let eulerAngles = this._eulerAngles;
         if ((this._rotationX || this._rotationY) &&
-            (quat.x === 0 && quat.y === 0 && quat.z === 0 && quat.w === 1)) {
+            (eulerAngles.x === 0 && eulerAngles.y === 0 && eulerAngles.z === 0)) {
             if (this._rotationX === this._rotationY) {
-                quat.fromEuler(quat, 0, 0, -this._rotationX);
+                eulerAngles.z = -this._rotationX;
             }
             else {
-                quat.fromEuler(quat, this._rotationX, this._rotationY, 0);
+                eulerAngles.x = this._rotationX;
+                eulerAngles.y = this._rotationY;
             }
             this._rotationX = this._rotationY = undefined;
         }
 
-        this._toEuler();
+        this._fromEuler();
 
         // Upgrade from 2.0.0 preview 4 & earlier versions
         // TODO: Remove after final version
@@ -1345,13 +1347,6 @@ let NodeDefines = {
      * The initializer for Node which will be called before all components onLoad
      */
     _onBatchCreated () {
-        this._upgrade_1x_to_2x();
-
-        this._updateOrderOfArrival();
-
-        // synchronize _cullingMask
-        this._cullingMask = 1 << _getActualGroupIndex(this);
-
         let prefabInfo = this._prefab;
         if (prefabInfo && prefabInfo.sync && prefabInfo.root === this) {
             if (CC_DEV) {
@@ -1360,6 +1355,13 @@ let NodeDefines = {
             }
             PrefabHelper.syncWithPrefab(this);
         }
+
+        this._upgrade_1x_to_2x();
+
+        this._updateOrderOfArrival();
+
+        // synchronize _cullingMask
+        this._cullingMask = 1 << _getActualGroupIndex(this);
 
         if (!this._activeInHierarchy) {
             // deactivate ActionManager and EventManager by default

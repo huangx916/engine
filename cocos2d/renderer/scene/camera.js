@@ -1,15 +1,17 @@
 // Copyright (c) 2017-2018 Xiamen Yaji Software Co., Ltd.
 
 import { color4, vec3, mat4, lerp } from '../../core/vmath';
-import { ray } from '../../core/3d/geom-utils';
+import geomUtils from '../../core/geom-utils';
 import enums from '../enums';
+
+let _tmp_v3 = vec3.create();
+let _tmp2_v3 = vec3.create();
+let _tmp_mat4 = mat4.create();
 
 let _matView = mat4.create();
 let _matProj = mat4.create();
 let _matViewProj = mat4.create();
 let _matInvViewProj = mat4.create();
-let _tmp_v3 = vec3.create();
-let _tmp2_v3 = vec3.create();
 
 /**
  * A representation of a camera instance
@@ -367,11 +369,13 @@ export default class Camera {
    * @param {number} y the screen y position to be transformed
    * @param {number} width framebuffer width
    * @param {number} height framebuffer height
-   * @param {ray} out the resulting ray
+   * @param {Ray} out the resulting ray
    * @returns {Ray} the resulting ray
    */
   screenPointToRay(x, y, width, height, out) {
-    out = out || ray.create();
+    if (!geomUtils) return out;
+    
+    out = out || geomUtils.Ray.create();
     this._calcMatrices(width, height);
 
     let cx = this._rect.x * width;
@@ -392,7 +396,7 @@ export default class Camera {
       vec3.transformMat4(_tmp_v3, _tmp_v3, _matInvViewProj);
     }
 
-    return ray.fromPoints(out, _tmp_v3, _tmp2_v3);
+    return geomUtils.Ray.fromPoints(out, _tmp_v3, _tmp2_v3);
   }
 
   /**
@@ -460,6 +464,30 @@ export default class Camera {
     out.x = cx + (out.x + 1) * 0.5 * cw;
     out.y = cy + (out.y + 1) * 0.5 * ch;
     out.z = out.z * 0.5 + 0.5;
+
+    return out;
+  }
+
+  /**
+   * transform a world space matrix to screen space
+   * @param {Mat4} out the resulting vector
+   * @param {Mat4} worldMatrix the world space matrix to be transformed
+   * @param {number} width framebuffer width
+   * @param {number} height framebuffer height
+   * @returns {Mat4} the resulting vector
+   */
+  worldMatrixToScreen (out, worldMatrix, width, height) {
+    this._calcMatrices(width, height);
+
+    mat4.mul(out, _matViewProj, worldMatrix);
+
+    let halfWidth = width / 2;
+    let halfHeight = height / 2;
+    mat4.identity(_tmp_mat4);
+    mat4.translate(_tmp_mat4, _tmp_mat4, vec3.set(_tmp_v3, halfWidth, halfHeight, 0));
+    mat4.scale(_tmp_mat4, _tmp_mat4, vec3.set(_tmp_v3, halfWidth, halfHeight, 1));
+    
+    mat4.mul(out, _tmp_mat4, out);
 
     return out;
   }

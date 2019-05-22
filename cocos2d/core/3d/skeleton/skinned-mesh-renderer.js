@@ -1,8 +1,7 @@
 /****************************************************************************
- Copyright (c) 2013-2016 Chukong Technologies Inc.
  Copyright (c) 2017-2018 Xiamen Yaji Software Co., Ltd.
 
- https://www.cocos.com/
+ http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated engine source code (the "Software"), a limited,
@@ -24,26 +23,16 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-require('./platform');
-require('./assets');
+const SkinnedMeshRenderer = require('./CCSkinnedMeshRenderer');
+const MeshRendererAssembler = require('../../mesh/mesh-renderer');
 
-if (!CC_EDITOR || !Editor.isMainProcess) {
-    require('./CCNode');
-    require('./CCPrivateNode');
-    require('./CCScene');
+let assembler = cc.js.addon({
+    fillBuffers (comp, renderer) {
+        comp.calcJointMatrix();
 
-    require('./components');
-    require('./graphics');
-    require('./collider');
-    // CCIntersection can be used separately.
-    require('./collider/CCIntersection');
-    require('./physics');
-    require('./camera/CCCamera');
-    require('./geom-utils');
-}
+        MeshRendererAssembler.fillBuffers(comp, renderer);
+    }
+}, MeshRendererAssembler);
 
-require('./mesh');
-require('./3d');
-require('./3d/polyfill-3d');
+module.exports = SkinnedMeshRenderer._assembler = assembler;
 
-require('./base-ui/CCWidgetManager');

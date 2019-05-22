@@ -154,39 +154,9 @@ let SkeletonAnimationClip = cc.Class({
     },
 
     _generateJointMatrixCurve () {
-        let joints = this._model.nodeMap;
+        let rootNode = this._model.rootNode;
         let curveData = this._curveData;
         let paths = curveData.paths;
-
-        // first build a virtual node tree, 
-        // each virtual node should contain position, scale, quat, bindpose properties.
-        let root = { children: [] };
-        for (let path in paths) {
-            let nodeLevels = path.split('/');
-            let node = root;
-            let currentPath = '';
-            for (let i = 0; i < nodeLevels.length; i++) {
-                let nodeName = nodeLevels[i];
-                currentPath += i === 0 ? nodeName : '/' + nodeName;
-                if (!node.children[nodeName]) {
-                    let joint = joints[currentPath];
-                    if (!joint) {
-                        cc.warn(`Can not find joint ${currentPath} when generate joint matrix curve.`)
-                        break;
-                    }
-                    node.children[nodeName] = {
-                        name: nodeName,
-                        path: currentPath,
-                        children: {},
-                        position: joint.position,
-                        quat:  joint.quat, 
-                        scale:  joint.scale,
-                        bindpose: joint.bindpose
-                    };
-                }
-                node = node.children[nodeName];
-            }
-        }
 
         let newCurveData = { ratios: [], jointMatrixMap: {} };
         let jointMatrixMap = newCurveData.jointMatrixMap;
@@ -196,7 +166,7 @@ let SkeletonAnimationClip = cc.Class({
             let matrix;
             let EPSILON = 10e-5;
 
-            if (node !== root) {
+            if (node !== rootNode) {
                 let props = paths[node.path].props;
                 for (let prop in props) {
                     let frames = props[prop];
@@ -228,15 +198,21 @@ let SkeletonAnimationClip = cc.Class({
                 }
 
                 let bindWorldMatrix;
-                if (node.bindpose) {
+                if (node.uniqueBindPose) {
                     bindWorldMatrix = mat4.create();
-                    mat4.mul(bindWorldMatrix, matrix, node.bindpose);
+                    mat4.mul(bindWorldMatrix, matrix, node.uniqueBindPose);
                 }
 
                 if (!jointMatrixMap[node.path]) {
                     jointMatrixMap[node.path] = [];
                 }
-                jointMatrixMap[node.path].push(maxtrixToArray(bindWorldMatrix || matrix))
+
+                if (bindWorldMatrix) {
+                    jointMatrixMap[node.path].push(maxtrixToArray(bindWorldMatrix))
+                }
+                else {
+                    jointMatrixMap[node.path].push(matrix)
+                }
             }
 
             let children = node.children;
@@ -252,7 +228,7 @@ let SkeletonAnimationClip = cc.Class({
 
         while (time < duration) {
             newCurveData.ratios.push(time / duration);
-            walk(root, time);
+            walk(rootNode, time);
             time += step;
         }
 

@@ -647,16 +647,15 @@ let TiledLayer = cc.Class({
         let material = this.sharedMaterials[0];
         if (!material) {
             material = Material.getInstantiatedBuiltinMaterial('sprite', this);
-            material.define('USE_TEXTURE', true);
         }
         else {
             material = Material.getInstantiatedMaterial(material, this);
         }
 
+        material.define('USE_TEXTURE', true);
         material.setProperty('texture', this._texture);
-        this.sharedMaterials[0] = material;
-
-        this.markForUpdateRenderData(true);
+        
+        this.setMaterial(0, material);
         this.markForRender(true);
     },
 });

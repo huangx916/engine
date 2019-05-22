@@ -26,11 +26,12 @@
 const RenderComponent = require('../components/CCRenderComponent');
 const Mesh = require('./CCMesh');
 const RenderFlow = require('../renderer/render-flow');
-const aabb = require('../3d/geom-utils/aabb');
 const Material = require('../assets/material/CCMaterial');
 
+import geomUtils from '../geom-utils';
 import gfx from '../../renderer/gfx';
 import CustomProperties from '../assets/material/custom-properties';
+
 
 /**
  * !#en Shadow projection mode
@@ -78,6 +79,13 @@ let ShadowCastingMode = cc.Enum({
     // SHADOWS_ONLY: 3,
 });
 
+/**
+ * !#en
+ * Mesh Renderer Component
+ * !#zh
+ * 网格渲染组件
+ * @class MeshRenderer
+ */
 let MeshRenderer = cc.Class({
     name: 'cc.MeshRenderer',
     extends: RenderComponent,
@@ -95,6 +103,13 @@ let MeshRenderer = cc.Class({
         _receiveShadows: false,
         _shadowCastingMode: ShadowCastingMode.OFF,
 
+        /**
+         * !#en
+         * The mesh which the renderer uses.
+         * !#zh
+         * 设置使用的网格
+         * @property {Mesh} mesh
+         */
         mesh: {
             get () {
                 return this._mesh;
@@ -102,6 +117,11 @@ let MeshRenderer = cc.Class({
             set (v) {
                 if (this._mesh === v) return;
                 this._setMesh(v);
+                if (!v) {
+                    this.markForRender(false);
+                    return;
+                }
+                this.markForRender(true);
                 this._activateMaterial(true);
                 this.markForUpdateRenderData(true);
                 this.node._renderFlag |= RenderFlow.FLAG_TRANSFORM;
@@ -115,6 +135,13 @@ let MeshRenderer = cc.Class({
             visible: false
         },
 
+        /**
+         * !#en
+         * Whether the mesh should receive shadows.
+         * !#zh
+         * 网格是否接受光源投射的阴影
+         * @property {Boolean} receiveShadows
+         */
         receiveShadows: {
             get () {
                 return this._receiveShadows;
@@ -125,6 +152,13 @@ let MeshRenderer = cc.Class({
             }
         },
 
+        /**
+         * !#en
+         * Shadow Casting Mode
+         * !#zh
+         * 网格投射阴影的模式
+         * @property {ShadowCastingMode} shadowCastingMode
+         */
         shadowCastingMode: {
             get () {
                 return this._shadowCastingMode;
@@ -183,8 +217,8 @@ let MeshRenderer = cc.Class({
             return;
         }
 
-        if (aabb) {
-            this._boundingBox = aabb.fromPoints(aabb.create(), mesh._minPos, mesh._maxPos);
+        if (geomUtils) {
+            this._boundingBox = geomUtils.Aabb.fromPoints(geomUtils.Aabb.create(), mesh._minPos, mesh._maxPos);
         }
 
         // TODO: used to upgrade from 2.1, should be removed

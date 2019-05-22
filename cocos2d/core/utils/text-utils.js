@@ -24,7 +24,11 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-const _BASELINE_RATIO = 0.25;
+// Draw text the textBaseline ratio (Can adjust the appropriate baseline ratio based on the platform)
+let _BASELINE_RATIO = 0.26;
+if (CC_RUNTIME) {
+    _BASELINE_RATIO = -0.2;
+}
 
 var textUtils = {
 

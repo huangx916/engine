@@ -91,8 +91,8 @@ const VerticalAlign = macro.VerticalTextAlignment;
  * @property {Number} CLAMP
  */
 /**
- * !#en In SHRINK mode, the font size will change dynamically to adapt the content size.
- * !#zh SHRINK 模式，字体大小会动态变化，以适应内容大小。
+ * !#en In SHRINK mode, the font size will change dynamically to adapt the content size. This mode may takes up more CPU resources when the label is refreshed.
+ * !#zh SHRINK 模式，字体大小会动态变化，以适应内容大小。这个模式在文本刷新的时候可能会占用较多 CPU 资源。
  * @property {Number} SHRINK
  */
 /**
@@ -639,6 +639,7 @@ let Label = cc.Class({
             } 
 
             if (this.cacheMode !== CacheMode.CHAR) {
+                this._frame._resetDynamicAtlasFrame();
                 this._frame._refreshTexture(this._ttfTexture);
             }
             
@@ -673,14 +674,14 @@ let Label = cc.Class({
 
             if (!material) {
                 material = Material.getInstantiatedBuiltinMaterial('sprite', this);
-                material.define('USE_TEXTURE', true);
             }
             else {
                 material = Material.getInstantiatedMaterial(material, this);
             }
-            
+
+            material.define('USE_TEXTURE', true);
             material.setProperty('texture', this._frame._texture);
-            this.sharedMaterials[0] = material;
+            this.setMaterial(0, material);
         }
 
         this.markForUpdateRenderData(true);

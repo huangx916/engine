@@ -28,8 +28,8 @@ const AffineTrans = require('../utils/affine-transform');
 const renderer = require('../renderer/index');
 const RenderFlow = require('../renderer/render-flow');
 const game = require('../CCGame');
-const ray = require('../3d/geom-utils/ray');
 
+import geomUtils from '../geom-utils';
 import RendererCamera from '../../renderer/scene/camera';
 import View from '../../renderer/core/view';
 
@@ -410,6 +410,16 @@ let Camera = cc.Class({
             return null;
         },
 
+        _findRendererCamera (node) {
+            let cameras = renderer.scene._cameras;
+            for (let i = 0; i < cameras._count; i++) {
+                if (cameras._data[i]._cullingMask & node._cullingMask) {
+                    return cameras._data[i];
+                }
+            }
+            return null;
+        },
+
         _setupDebugCamera () {
             if (_debugCamera) return;
             if (game.renderType === game.RENDER_TYPE_CANVAS) return;
@@ -644,7 +654,7 @@ let Camera = cc.Class({
      * @return {Ray}
      */
     getRay (screenPos) {
-        if (!ray) return screenPos;
+        if (!geomUtils) return screenPos;
         
         vec3.set(_v3_temp_3, screenPos.x, screenPos.y, 1);
         this._camera.screenToWorld(_v3_temp_2, _v3_temp_3, cc.visibleRect.width, cc.visibleRect.height);
@@ -657,7 +667,7 @@ let Camera = cc.Class({
             this.node.getWorldPosition(_v3_temp_1);
         }
 
-        return ray.fromPoints(ray.create(), _v3_temp_1, _v3_temp_2);
+        return geomUtils.Ray.fromPoints(geomUtils.Ray.create(), _v3_temp_1, _v3_temp_2);
     },
 
     /**

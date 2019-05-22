@@ -420,8 +420,8 @@ sp.Skeleton = cc.Class({
     },
 
     // override
-    _updateMaterial (material) {
-        this.setMaterial(0, material);
+    setMaterial (index, material) {
+        this._super(index, material);
         this._materialCache = {};
     },
 
@@ -481,6 +481,8 @@ sp.Skeleton = cc.Class({
             this._clipper = new spine.SkeletonClipping();
             this._rootBone = this._skeleton.getRootBone();
         }
+
+        this._activateMaterial();
     },
 
     /**
@@ -542,10 +544,6 @@ sp.Skeleton = cc.Class({
         if (CC_JSB) {
             this._cacheMode = AnimationCacheMode.REALTIME;
         }
-
-        var material = Material.getInstantiatedBuiltinMaterial('spine', this);
-        material.define('_USE_MODEL', true);
-        this.setMaterial(0, material);
 
         this._updateSkeletonData();
         this._updateDebugDraw();
@@ -661,13 +659,41 @@ sp.Skeleton = cc.Class({
         }
     },
 
+    _activateMaterial () {
+        if (!this.skeletonData) {
+            this.disableRender();
+            return;
+        }
+        
+        this.skeletonData.ensureTexturesLoaded(function (result) {
+            if (!result) {
+                this.disableRender();
+                return;
+            }
+            
+            let material = this.sharedMaterials[0];
+            if (!material) {
+                material = Material.getInstantiatedBuiltinMaterial('spine', this);
+            }
+            else {
+                material = Material.getInstantiatedMaterial(material, this);
+            }
+
+            material.define('_USE_MODEL', true);
+
+            this.setMaterial(0, material);
+            this.markForRender(true);
+        }, this);
+    },
+
+    onEnable () {
+        this._super();
+        this._activateMaterial();
+    },
+
     onRestore () {
         // Destroyed and restored in Editor
-        if (!this._material) {
-            this._boundingBox = cc.rect();
-            this._material = Material.getInstantiatedBuiltinMaterial('spine', this);
-            this._materialCache = {};
-        }
+        this._boundingBox = cc.rect();
     },
 
     // RENDERER

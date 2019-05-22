@@ -32,6 +32,13 @@ let _m4_tmp = mat4.create();
 
 const dummyNode = new cc.Node();
 
+/**
+ * !#en
+ * Skinned Mesh Renderer
+ * !#zh
+ * 蒙皮渲染组件
+ * @class SkinnedMeshRenderer
+ */
 let SkinnedMeshRenderer = cc.Class({
     name: 'cc.SkinnedMeshRenderer',
     extends: MeshRenderer,
@@ -44,14 +51,19 @@ let SkinnedMeshRenderer = cc.Class({
         this._jointsData = null;
         this._jointsTexture = null;
         this._joints = [];
-
-        this._assembler = MeshRenderer._assembler;
     },
 
     properties: {
         _skeleton: Skeleton,
         _rootBone: cc.Node,
 
+        /**
+         * !#en
+         * Skeleton Asset
+         * !#zh
+         * 骨骼资源
+         * @property {Skeleton} skeleton
+         */
         skeleton: {
             get () {
                 return this._skeleton;
@@ -64,6 +76,13 @@ let SkinnedMeshRenderer = cc.Class({
             type: Skeleton
         },
 
+        /**
+         * !#en
+         * Root Bone
+         * !#zh
+         * 骨骼根节点
+         * @property {Node} rootBone
+         */
         rootBone: {
             get () {
                 return this._rootBone;
@@ -140,11 +159,17 @@ let SkinnedMeshRenderer = cc.Class({
         }
 
         if (useJointMatrix) {
-            const bindposes = this.skeleton.bindposes;
+            const uniqueBindPoses = this.skeleton.uniqueBindPoses;
             for (let i = 0; i < jointPaths.length; i++) {
                 let joint = joints[i];
-                mat4.mul(_m4_tmp, joint._worldMatrixToRoot, bindposes[i]);
-                joint._jointMatrix = mat4.array([], _m4_tmp);
+                if (uniqueBindPoses[i]) {
+                    mat4.mul(_m4_tmp, joint._worldMatrixToRoot, uniqueBindPoses[i]);
+                    joint._jointMatrix = mat4.array([], _m4_tmp);
+                }
+                else {
+                    joint._jointMatrix = joint._worldMatrixToRoot;
+                }
+                
             }
         }
     },
@@ -181,6 +206,7 @@ let SkinnedMeshRenderer = cc.Class({
         }
         else {
             this._jointsData = new Float32Array(jointCount * 16);
+            customProperties.define('_JOINT_MATRICES_SIZE', jointCount);
             customProperties.setProperty('_jointMatrices', this._jointsData);
         }
 
@@ -228,20 +254,27 @@ let SkinnedMeshRenderer = cc.Class({
         return this._useJointMatrix() ? this.rootBone : dummyNode;
     },
 
-    update () {
+    calcJointMatrix () {
         if (!this.skeleton || !this.rootBone) return;
         const joints = this._joints;
+        const bindposes = this.skeleton.bindposes;
+        const uniqueBindPoses = this.skeleton.uniqueBindPoses;
 
         if (this._useJointMatrix()) {
             for (let i = 0; i < joints.length; ++i) {
                 let joint = joints[i];
                 let jointMatrix = joint._jointMatrix;
     
-                this._setJointsDataWithArray(i, jointMatrix);
+                if (uniqueBindPoses[i]) {
+                    this._setJointsDataWithArray(i, jointMatrix);
+                }
+                else {
+                    mat4.multiply(_m4_tmp, jointMatrix, bindposes[i]);
+                    this._setJointsDataWithMatrix(i, _m4_tmp);
+                }
             }
         }
         else {
-            const bindposes = this.skeleton.bindposes;
             for (let i = 0; i < joints.length; ++i) {
                 let joint = joints[i];
     

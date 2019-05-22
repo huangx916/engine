@@ -13,6 +13,8 @@ const FINAL = 1 << 9;
 
 let _batcher;
 let _cullingMask = 0;
+let _renderQueueIndex = 0;
+let _evm = cc.eventManager;
 
 function RenderFlow () {
     this._func = init;
@@ -36,6 +38,7 @@ _proto._worldTransform = function (node) {
     let position = node._position;
     t.m12 = position.x;
     t.m13 = position.y;
+    t.m14 = position.z;
 
     node._mulMat(node._worldMatrix, node._parent._worldMatrix, t);
     node._renderFlag &= ~WORLD_TRANSFORM;
@@ -89,6 +92,8 @@ _proto._children = function (node) {
     let children = node._children;
     for (let i = 0, l = children.length; i < l; i++) {
         let c = children[i];
+        _evm._updateRenderOrder(c, ++_renderQueueIndex);
+
         // Advance the modification of the flag to avoid node attribute modification is invalid when opacity === 0.
         c._renderFlag |= worldDirtyFlag;
         if (!c._activeInHierarchy || c._opacity === 0) continue;
@@ -189,6 +194,7 @@ RenderFlow.visit = function (scene) {
     _batcher.walking = true;
 
     _cullingMask = 1 << scene.groupIndex;
+    _renderQueueIndex = 0;
 
     if (scene._renderFlag & WORLD_TRANSFORM) {
         _batcher.worldMatDirty ++;

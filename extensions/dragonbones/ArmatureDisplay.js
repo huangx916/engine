@@ -386,13 +386,12 @@ let ArmatureDisplay = cc.Class({
     },
 
     ctor () {
-        this._renderDatas = [];
         // Property _materialCache Use to cache material,since dragonBones may use multiple texture,
         // it will clone from the '_material' property,if the dragonbones only have one texture,
         // it will just use the _material,won't clone it.
         // So if invoke getMaterial,it only return _material,if you want to change all materialCache,
         // you can change materialCache directly.
-        this._eventTarget = null;
+        this._eventTarget = new EventTarget();
         this._materialCache = {};
         this._inited = false;
         this._factory = dragonBones.CCFactory.getInstance();
@@ -422,8 +421,8 @@ let ArmatureDisplay = cc.Class({
     },
 
     // override
-    _updateMaterial (material) {
-        this.setMaterial(0, material);
+    setMaterial (index, material) {
+        this._super(index, material);
         this._materialCache = {};
     },
 
@@ -469,14 +468,6 @@ let ArmatureDisplay = cc.Class({
         return this._armatureKey;
     },
 
-    onRestore () {
-        // Destroyed and restored in Editor
-        if (!this._material) {
-            this._material = new SpriteMaterial();
-            this._materialCache = {};
-        }
-    },
-
     /**
      * !#en
      * It's best to set cache mode before set property 'dragonAsset', or will waste some cpu time.
@@ -514,6 +505,7 @@ let ArmatureDisplay = cc.Class({
         if (this._armature && !this.isAnimationCached()) {
             this._factory._dragonBones.clock.add(this._armature);
         }
+        this._activateMaterial();
     },
 
     onDisable () {
@@ -615,21 +607,26 @@ let ArmatureDisplay = cc.Class({
             return;
         }
 
+        if (!texture.loaded) {
+            this.disableRender();
+            texture.once('load', this._activateMaterial, this);
+            return;
+        }
+
         // Get material
         let material = this.sharedMaterials[0];
         if (!material) {
             material = Material.getInstantiatedBuiltinMaterial('sprite', this);
-            material.define('_USE_MODEL', true);
-            material.define('USE_TEXTURE', true);
         }
         else {
             material = Material.getInstantiatedMaterial(material, this);
         }
 
+        material.define('_USE_MODEL', true);
+        material.define('USE_TEXTURE', true);
         material.setProperty('texture', texture);
-        this.sharedMaterials[0] = material;
-
-        this.markForUpdateRenderData(true);
+        
+        this.setMaterial(0, material);
         this.markForRender(true);
     },
 
@@ -656,16 +653,13 @@ let ArmatureDisplay = cc.Class({
             this._curFrame = null;
             this._playing = false;
             this._preCacheMode = null;
-            this._eventTarget = null;
         }
 
         if (!CC_EDITOR) {
             if (this._cacheMode === AnimationCacheMode.SHARED_CACHE) {
                 this._armatureCache = ArmatureCache.sharedCache;
-                this._eventTarget = new EventTarget;
             } else if (this._cacheMode === AnimationCacheMode.PRIVATE_CACHE) {
                 this._armatureCache = new ArmatureCache;
-                this._eventTarget = new EventTarget;
             }
         }
 
@@ -685,6 +679,7 @@ let ArmatureDisplay = cc.Class({
             this._displayProxy = this._factory.buildArmatureDisplay(this.armatureName, this._armatureKey, "", atlasUUID);
             if (!this._displayProxy) return;
             this._displayProxy._ccNode = this.node;
+            this._displayProxy.setEventTarget(this._eventTarget);
             this._armature = this._displayProxy._armature;
             this._armature.animation.timeScale = this.timeScale;
         }
@@ -882,11 +877,7 @@ let ArmatureDisplay = cc.Class({
      * @param {Object} [target] - The target (this object) to invoke the callback, can be null
      */
     once (eventType, listener, target) {
-        if (this._displayProxy) {
-            this._displayProxy.once(eventType, listener, target);
-        } else if (this._eventTarget) {
-            this._eventTarget.once(eventType, listener, target);
-        }
+        this._eventTarget.once(eventType, listener, target);
     },
 
     /**
@@ -901,11 +892,7 @@ let ArmatureDisplay = cc.Class({
      * @param {Object} [target] - The target (this object) to invoke the callback, can be null
      */
     addEventListener (eventType, listener, target) {
-        if (this._displayProxy) {
-            this._displayProxy.on(eventType, listener, target);
-        } else if (this._eventTarget) {
-            this._eventTarget.on(eventType, listener, target);
-        }
+        this._eventTarget.on(eventType, listener, target);
     },
 
     /**
@@ -919,11 +906,7 @@ let ArmatureDisplay = cc.Class({
      * @param {Object} [target]
      */
     removeEventListener (eventType, listener, target) {
-        if (this._displayProxy) {
-            this._displayProxy.off(eventType, listener, target);
-        } else if (this._eventTarget) {
-            this._eventTarget.off(eventType, listener, target);
-        }
+        this._eventTarget.off(eventType, listener, target);
     },
 
     /**
